@@ -32,7 +32,7 @@ func main() {
 
 	clientKey := "488250433299-cd9m5t86eutqc247m1o2ssvetaotdh2f.apps.googleusercontent.com"
 	secret := "IszjZDWShkocSSYZdJ6IcN__"
-	callbackURL := "https://project-california.herokuapp.com//auth/google/callback"
+	callbackURL := "https://project-california.herokuapp.com/auth/google/callback"
 	goth.UseProviders(
 		google.New(clientKey, secret, callbackURL, "email", "profile"),
 	)
