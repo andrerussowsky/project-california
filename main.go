@@ -1,72 +1,33 @@
 package main
 
 import (
-	"fmt"
-	"html/template"
-	"net/http"
-	"os"
-
-	"log"
-
-	"github.com/gorilla/pat"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/gorilla/sessions"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
 	"github.com/markbates/goth/providers/google"
-	"github.com/gorilla/sessions"
+	"log"
+	"net/http"
+	"os"
+	"project-california/components"
+	"project-california/db"
+	"project-california/server"
+	"project-california/settings"
 )
 
 
 func main() {
-	
-	key := "project-california-session"  // Replace with your SESSION_SECRET or similar
-	maxAge := 86400 * 30  // 30 days
-	isProd := false       // Set to true when serving over https
 
-	store := sessions.NewCookieStore([]byte(key))
-	store.MaxAge(maxAge)
-	store.Options.Path = "/"
-	store.Options.HttpOnly = true   // HttpOnly should always be enabled
-	store.Options.Secure = isProd
+	c := &components.Components{
+		Settings: settings.Config(),
+	}
+	c.DB = db.Config(c)
+	defer c.DB.Close()
 
-	gothic.Store = store
+	configSession(c)
 
-	clientKey := "488250433299-cd9m5t86eutqc247m1o2ssvetaotdh2f.apps.googleusercontent.com"
-	secret := "IszjZDWShkocSSYZdJ6IcN__"
-	callbackURL := "https://project-california.herokuapp.com/auth/google/callback"
-	goth.UseProviders(
-		google.New(clientKey, secret, callbackURL, "email", "profile"),
-	)
-
-	p := pat.New()
-	p.Get("/auth/{provider}/callback", func(res http.ResponseWriter, req *http.Request) {
-
-		user, err := gothic.CompleteUserAuth(res, req)
-		if err != nil {
-			fmt.Fprintln(res, err)
-			return
-		}
-		t, _ := template.ParseFiles("templates/success.html")
-		t.Execute(res, user)
-	})
-
-	p.Get("/logout/{provider}", func(res http.ResponseWriter, req *http.Request) {
-		gothic.Logout(res, req)
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusTemporaryRedirect)
-	})
-
-	p.Get("/auth/{provider}", func(res http.ResponseWriter, req *http.Request) {
-		gothic.BeginAuthHandler(res, req)
-	})
-
-	p.Get("/", func(res http.ResponseWriter, req *http.Request) {
-		t, _ := template.ParseFiles("templates/index.html")
-		t.Execute(res, false)
-	})
-
-	port := getPort()
-	log.Println("listening on port "+port)
-	log.Fatal(http.ListenAndServe(port, p))
+	service := server.Config(c)
+	log.Fatal(http.ListenAndServe(getPort(), service))
 }
 
 func getPort() string {
@@ -75,4 +36,23 @@ func getPort() string {
 		return ":" + p
 	}
 	return ":3000"
+}
+
+func configSession(c *components.Components) {
+
+	store := sessions.NewCookieStore([]byte("project-california-session"))
+	store.MaxAge(86400 * 30)
+	store.Options.Path = "/"
+	store.Options.HttpOnly = true
+	store.Options.Secure = false
+	gothic.Store = store
+
+	goth.UseProviders(
+		google.New(
+			c.Settings.GetString("google.clientKey"),
+			c.Settings.GetString("google.secret"),
+			c.Settings.GetString("google.callback"),
+			"email",
+			"profile"),
+	)
 }
