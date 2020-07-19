@@ -61,6 +61,6 @@ func main() {
 		t.Execute(res, false)
 	})
 
-	log.Println("listening on localhost:3000")
-	log.Fatal(http.ListenAndServe(":3000", p))
+	log.Println("listening on port 80")
+	log.Fatal(http.ListenAndServe(":80", p))
 }
