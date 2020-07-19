@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	
+	"os"
 
 	"log"
 
@@ -61,6 +61,15 @@ func main() {
 		t.Execute(res, false)
 	})
 
-	log.Println("listening on port 80")
-	log.Fatal(http.ListenAndServe(":80", p))
+	port := getPort()
+	log.Println("listening on port "+port)
+	log.Fatal(http.ListenAndServe(port, p))
+}
+
+func getPort() string {
+	p := os.Getenv("PORT")
+	if p != "" {
+		return ":" + p
+	}
+	return ":3000"
 }
