@@ -30,8 +30,11 @@ func main() {
 
 	gothic.Store = store
 
+	clientKey := "488250433299-cd9m5t86eutqc247m1o2ssvetaotdh2f.apps.googleusercontent.com"
+	secret := "IszjZDWShkocSSYZdJ6IcN__"
+	callbackURL := "https://project-california.herokuapp.com//auth/google/callback"
 	goth.UseProviders(
-		google.New("488250433299-cd9m5t86eutqc247m1o2ssvetaotdh2f.apps.googleusercontent.com", "IszjZDWShkocSSYZdJ6IcN__", "http://localhost:3000/auth/google/callback", "email", "profile"),
+		google.New(clientKey, secret, callbackURL, "email", "profile"),
 	)
 
 	p := pat.New()
