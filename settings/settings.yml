@@ -5,10 +5,10 @@ google:
   #callback: "http://localhost:3000/auth/google/callback"
 
 mysql:
-  username: "andrerussowsky"
-  password: "tatarsz1911"
-  host: "db4free.net:3306"
-  database: "projectcalifa"
+  username: "b20f0df136ff17"
+  password: "89cfdca7"
+  host: "us-cdbr-east-02.cleardb.com:3306"
+  database: "heroku_8cced30521c6b11"
 
 email:
   username: "projectcalifa@gmail.com"
