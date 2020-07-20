@@ -17,7 +17,7 @@ func Callback(c *components.Components, res http.ResponseWriter, req *http.Reque
 
 	user, err := gothic.CompleteUserAuth(res, req)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		RedirectWithErrorMessage(res, req, "Authenticate error, please try again later", "/")
 		return
 	}
 
@@ -26,7 +26,7 @@ func Callback(c *components.Components, res http.ResponseWriter, req *http.Reque
 
 		err = db.InsertUser(c, models.User{Email: user.Email, Name: user.Name})
 		if err != nil {
-			http.Error(res, "Insert error, please try again later", http.StatusBadRequest)
+			RedirectWithErrorMessage(res, req, "Insert error, please try again later", "/")
 			return
 		}
 
@@ -40,7 +40,6 @@ func Callback(c *components.Components, res http.ResponseWriter, req *http.Reque
 	} else {
 		res.Header().Set("Location", "/user/sign-up-complete")
 	}
-
 	res.WriteHeader(http.StatusFound)
 	return
 }
