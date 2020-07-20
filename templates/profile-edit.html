@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+    <title>Profile edit</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"> <!-- load bulma css -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"> <!-- load fontawesome -->
+    <style>
+        body        { padding-top:70px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="jumbotron text-center">
+        <h1>Profile edit</h1>
+        {{ if .Error }}
+            <div class="alert alert-danger" role="alert">
+                {{.Error}}
+            </div>
+        {{ end }}
+        <form action="/user/profile-edit" method="POST">
+            <div class="form-group">
+                <input type="text" class="form-control" name="name" value="{{.Name}}" placeholder="Name">
+            </div>
+            <div class="form-group">
+                <input type="email" class="form-control" name="email" value="{{.Email}}" placeholder="Email">
+            </div>
+            <div class="form-group">
+                <input type="password" class="form-control" name="password" placeholder="Password">
+            </div>
+            <div class="form-group">
+                <input type="text" class="form-control" name="phone" value="{{.Phone}}" placeholder="Phone">
+            </div>
+            <div class="form-group">
+                <input type="text" class="form-control" name="address" value="{{.Address}}" placeholder="Address">
+            </div>
+
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a href="/logout/google" class="btn btn-danger">Logout</a>
+        </form>
+    </div>
+</div>
+</body>
+</html> 

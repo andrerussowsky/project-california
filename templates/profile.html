@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head>
+    <title>Profile information</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"> <!-- load bulma css -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"> <!-- load fontawesome -->
+    <style>
+        body        { padding-top:70px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="jumbotron text-center">
+        <h1>Profile information</h1>
+        <p>
+            <strong>Id</strong>: {{.ID}}<br>
+            <strong>Email</strong>: {{.Email}}<br>
+            <strong>Name</strong>: {{.Name}}<br>
+            <strong>Phone</strong>: {{.Phone}}<br>
+            <strong>Address</strong>: {{.Address}}
+        </p>
+        <a href="/user/profile-edit" class="btn btn-primary">Edit profile</a>
+        <a href="/logout/google" class="btn btn-danger">Logout</a>
+    </div>
+</div>
+</body>
+</html> 
