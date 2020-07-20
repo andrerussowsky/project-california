@@ -6,7 +6,7 @@ import (
 	"project-california/components"
 )
 
-func Config(c *components.Components) *sql.DB {
+func Connect(c *components.Components) *sql.DB {
 
 	db, err := sql.Open("mysql",
 		fmt.Sprintf("%s:%s@tcp(%s)/%s",

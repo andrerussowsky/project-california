@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"project-california/components"
-	"project-california/db"
 	"project-california/server"
 	"project-california/settings"
 )
@@ -21,8 +20,6 @@ func main() {
 	c := &components.Components{
 		Settings: settings.Config(),
 	}
-	c.DB = db.Config(c)
-	defer c.DB.Close()
 
 	configSession(c)
 
