@@ -166,18 +166,24 @@ func UserSignUpCompletePost(c *components.Components, res http.ResponseWriter, r
 	}
 
 	name := strings.TrimSpace(req.Form.Get("name"))
-	if len(name) > 0 {
-		dbUser.Name = name
+	if len(name) == 0 {
+		RedirectWithErrorMessage(res, req, "Invalid name", "/user/sign-up-complete")
+		return
 	}
 	phone := strings.TrimSpace(req.Form.Get("phone"))
-	if len(phone) > 0 {
-		dbUser.Phone = phone
+	if len(phone) == 0 {
+		RedirectWithErrorMessage(res, req, "Invalid phone", "/user/sign-up-complete")
+		return
 	}
 	address := strings.TrimSpace(req.Form.Get("address"))
-	if len(address) > 0 {
-		dbUser.Address = address
+	if len(address) == 0 {
+		RedirectWithErrorMessage(res, req, "Invalid address", "/user/sign-up-complete")
+		return
 	}
 
+	dbUser.Name = name
+	dbUser.Phone = phone
+	dbUser.Address = address
 	dbUser.Status = models.UserStatusComplete
 
 	err = db.UpdateUser(c, dbUser)
