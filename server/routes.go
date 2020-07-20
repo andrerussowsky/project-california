@@ -1,14 +1,11 @@
 package server
 
 import (
-	"fmt"
 	"github.com/gorilla/pat"
-	"github.com/markbates/goth/gothic"
 	"html/template"
 	"net/http"
 	"project-california/components"
 	"project-california/controllers"
-	"project-california/models"
 )
 
 func Config(c *components.Components) *pat.Router {
@@ -81,12 +78,7 @@ func Config(c *components.Components) *pat.Router {
 
 	p.Get("/", func(res http.ResponseWriter, req *http.Request) {
 
-		var sessionModel  = models.Session{}
-		errorSession, _ := gothic.Store.Get(req, "error-session")
-		if errorSession.Values["error"] != nil {
-			sessionModel.Error = fmt.Sprintf("%v", errorSession.Values["error"])
-			controllers.RemoveErrorSession(res,req)
-		}
+		sessionModel := controllers.LoadErrorSession(res, req)
 
 		t, _ := template.ParseFiles("templates/index.html")
 		t.Execute(res, sessionModel)

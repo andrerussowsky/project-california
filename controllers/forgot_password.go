@@ -9,7 +9,6 @@ import (
 	"github.com/satori/go.uuid"
 	"html/template"
 	"net/http"
-	"net/smtp"
 	"project-california/components"
 	"project-california/db"
 	"project-california/models"
@@ -18,12 +17,7 @@ import (
 
 func UserForgotPassword(c *components.Components, res http.ResponseWriter, req *http.Request) {
 
-	var sessionModel = models.Session{}
-	errorSession, _ := gothic.Store.Get(req, "error-session")
-	if errorSession.Values["error"] != nil {
-		sessionModel.Error = fmt.Sprintf("%v", errorSession.Values["error"])
-		RemoveErrorSession(res,req)
-	}
+	sessionModel := LoadErrorSession(res, req)
 
 	t, _ := template.ParseFiles("templates/forgot-password.html")
 	t.Execute(res, sessionModel)
@@ -35,19 +29,13 @@ func UserForgotPasswordPost(c *components.Components, res http.ResponseWriter, r
 
 	email := strings.TrimSpace(req.Form.Get("email"))
 	if len(email) == 0 {
-		SetErrorSession(res, req, "Invalid email")
-
-		res.Header().Set("Location", "/user/forgot-password")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Invalid email", "/user/forgot-password")
 		return
 	}
 
 	dbUser, err := db.GetUserWithEmail(c, email)
 	if err != nil {
-		SetErrorSession(res, req, "Email not found")
-
-		res.Header().Set("Location", "/user/forgot-password")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Email not found", "/user/forgot-password")
 		return
 	}
 
@@ -60,20 +48,16 @@ func UserForgotPasswordPost(c *components.Components, res http.ResponseWriter, r
 		UUID:   uuid,
 	})
 	if err != nil {
-		SetErrorSession(res, req, "Unexpected error")
-
-		res.Header().Set("Location", "/user/forgot-password")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Unexpected error", "/user/forgot-password")
 		return
 	}
 
 	tmpl, _ := template.ParseFiles("templates/forgot-password-email.html")
 
-	forgotPasswordUrl := c.Settings.GetString("email.forgotPasswordUrl")
 	data := struct {
 		Url string
 	}{
-		fmt.Sprintf(`%s?uuid=%s`, forgotPasswordUrl, uuid),
+		fmt.Sprintf(`%s?uuid=%s`, c.Settings.GetString("email.forgotPasswordUrl"), uuid),
 	}
 
 	var tpl bytes.Buffer
@@ -90,52 +74,19 @@ func UserForgotPasswordPost(c *components.Components, res http.ResponseWriter, r
 	return
 }
 
-func SendMail(c *components.Components, email string, body []byte) {
-
-	smtpServer := struct {
-		host string
-		port string
-	} {
-		"smtp.gmail.com",
-		"587",
-	}
-
-	from := c.Settings.GetString("email.username")
-	password := c.Settings.GetString("email.password")
-
-	auth := smtp.PlainAuth("", from, password, "smtp.gmail.com")
-	err := smtp.SendMail(smtpServer.host + ":" + smtpServer.port, auth, from, []string{email}, body)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println("Email Sent!")
-}
-
 func UserForgotPasswordReset(c *components.Components, res http.ResponseWriter, req *http.Request) {
 
-	var sessionModel = models.Session{}
-	errorSession, _ := gothic.Store.Get(req, "error-session")
-	if errorSession.Values["error"] != nil {
-		sessionModel.Error = fmt.Sprintf("%v", errorSession.Values["error"])
-		RemoveErrorSession(res,req)
-	}
+	sessionModel := LoadErrorSession(res, req)
 
 	keys, ok := req.URL.Query()["uuid"]
 	if !ok || len(keys[0]) < 1 {
-		SetErrorSession(res, req, "Invalid forgot password")
-
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Invalid forgot password", "/")
 		return
 	}
 
 	fp, err := db.GetForgotPassword(c, keys[0])
 	if err != nil {
-		SetErrorSession(res, req, "Unexpected error")
-
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Unexpected error", "/")
 		return
 	}
 
@@ -149,10 +100,7 @@ func UserForgotPasswordResetPost(c *components.Components, res http.ResponseWrit
 
 	fpSession, _ := gothic.Store.Get(req, "forgot-password-session")
 	if fpSession.Values["user_id"] == nil {
-		SetErrorSession(res, req, "Unexpected error")
-
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Unexpected error", "/")
 		return
 	}
 
@@ -163,36 +111,24 @@ func UserForgotPasswordResetPost(c *components.Components, res http.ResponseWrit
 
 	password := strings.TrimSpace(req.Form.Get("password"))
 	if len(password) == 0 {
-		SetErrorSession(res, req, "Invalid password")
-
-		res.Header().Set("Location", "/user/forgot-password-reset?uuid="+keyID)
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Invalid password", "/user/forgot-password-reset?uuid="+keyID)
 		return
 	}
 
 	confirmPassword := strings.TrimSpace(req.Form.Get("confirm-password"))
 	if len(confirmPassword) == 0 {
-		SetErrorSession(res, req, "Invalid password confirmation")
-
-		res.Header().Set("Location", "/user/forgot-password-reset?uuid="+keyID)
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Invalid password confirmation", "/user/forgot-password-reset?uuid="+keyID)
 		return
 	}
 
 	if password != confirmPassword {
-		SetErrorSession(res, req, "Password doesnt match")
-
-		res.Header().Set("Location", "/user/forgot-password-reset?uuid="+keyID)
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Password doesnt match", "/user/forgot-password-reset?uuid="+keyID)
 		return
 	}
 
 	dbUser, err := db.GetUser(c, id)
 	if err != nil {
-		SetErrorSession(res, req, "Unexpected error")
-
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Unexpected error", "/user/forgot-password-reset?uuid="+keyID)
 		return
 	}
 
@@ -202,10 +138,7 @@ func UserForgotPasswordResetPost(c *components.Components, res http.ResponseWrit
 
 	err = db.UpdateUser(c, dbUser)
 	if err != nil {
-		SetErrorSession(res, req, "Update error, please try again later")
-
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Update error, please try again later", "/user/forgot-password-reset?uuid="+keyID)
 		return
 	}
 

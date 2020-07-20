@@ -16,12 +16,7 @@ import (
 
 func UserSignIn(c *components.Components, res http.ResponseWriter, req *http.Request) {
 
-	var sessionModel  = models.Session{}
-	errorSession, _ := gothic.Store.Get(req, "error-session")
-	if errorSession.Values["error"] != nil {
-		sessionModel.Error=  fmt.Sprintf("%v", errorSession.Values["error"])
-		RemoveErrorSession(res,req)
-	}
+	sessionModel := LoadErrorSession(res, req)
 
 	t, _ := template.ParseFiles("templates/sign-in.html")
 	t.Execute(res, sessionModel)
@@ -33,45 +28,30 @@ func UserSignInPost(c *components.Components, res http.ResponseWriter, req *http
 
 	email := strings.TrimSpace(req.Form.Get("email"))
 	if len(email) == 0 {
-		SetErrorSession(res, req, "Invalid email")
-
-		res.Header().Set("Location", "/user/sign-in")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Invalid email", "/user/sign-in")
 		return
 	}
 	password := strings.TrimSpace(req.Form.Get("password"))
 	if len(password) == 0 {
-		SetErrorSession(res, req, "Invalid password")
-
-		res.Header().Set("Location", "/user/sign-in")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Invalid password", "/user/sign-in")
 		return
 	}
 
 	dbUser, err := db.GetUserWithEmail(c, email)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			SetErrorSession(res, req, "User not found")
-
-			res.Header().Set("Location", "/user/sign-in")
-			res.WriteHeader(http.StatusFound)
+			RedirectWithErrorMessage(res, req, "User not found", "/user/sign-in")
 			return
 		}
 
-		SetErrorSession(res, req, "Unexpected error")
-
-		res.Header().Set("Location", "/user/sign-in")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Unexpected error", "/user/sign-in")
 		return
 	}
 
 	hash := md5.Sum([]byte(password))
 	passwordMD5 := hex.EncodeToString(hash[:])
 	if dbUser.Password != passwordMD5 {
-		SetErrorSession(res, req, "Wrong password")
-
-		res.Header().Set("Location", "/user/sign-in")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Wrong password", "/user/sign-in")
 		return
 	}
 
@@ -82,19 +62,13 @@ func UserSignInPost(c *components.Components, res http.ResponseWriter, req *http
 	} else {
 		res.Header().Set("Location", "/user/sign-up-complete")
 	}
-
 	res.WriteHeader(http.StatusFound)
 	return
 }
 
 func UserSignUp(c *components.Components, res http.ResponseWriter, req *http.Request) {
 
-	var sessionModel = models.Session{}
-	errorSession, _ := gothic.Store.Get(req, "error-session")
-	if errorSession.Values["error"] != nil {
-		sessionModel.Error = fmt.Sprintf("%v", errorSession.Values["error"])
-		RemoveErrorSession(res,req)
-	}
+	sessionModel := LoadErrorSession(res, req)
 
 	t, _ := template.ParseFiles("templates/sign-up.html")
 	t.Execute(res, sessionModel)
@@ -106,45 +80,30 @@ func UserSignUpPost(c *components.Components, res http.ResponseWriter, req *http
 
 	email := strings.TrimSpace(req.Form.Get("email"))
 	if len(email) == 0 {
-		SetErrorSession(res, req, "Invalid email")
-
-		res.Header().Set("Location", "/user/sign-up")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Invalid email", "/user/sign-up")
 		return
 	}
 
 	password := strings.TrimSpace(req.Form.Get("password"))
 	if len(password) == 0 {
-		SetErrorSession(res, req, "Invalid password")
-
-		res.Header().Set("Location", "/user/sign-up")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Invalid password", "/user/sign-up")
 		return
 	}
 
 	confirmPassword := strings.TrimSpace(req.Form.Get("confirm-password"))
 	if len(confirmPassword) == 0 {
-		SetErrorSession(res, req, "Invalid password confirmation")
-
-		res.Header().Set("Location", "/user/sign-up")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Invalid password confirmation", "/user/sign-up")
 		return
 	}
 
 	if password != confirmPassword {
-		SetErrorSession(res, req, "Password doesnt match")
-
-		res.Header().Set("Location", "/user/sign-up")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Password doesnt match", "/user/sign-up")
 		return
 	}
 
 	_, err := db.GetUserWithEmail(c, email)
 	if err == nil {
-		SetErrorSession(res, req, "Email is already taken")
-
-		res.Header().Set("Location", "/user/sign-up")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Email is already taken", "/user/sign-up")
 		return
 	}
 
@@ -153,14 +112,15 @@ func UserSignUpPost(c *components.Components, res http.ResponseWriter, req *http
 
 	err = db.InsertUser(c, models.User{Email: email, Password: passwordMD5})
 	if err != nil {
-		SetErrorSession(res, req, "Insert error, please try again later")
-
-		res.Header().Set("Location", "/user/sign-up")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Insert error, please try again later", "/user/sign-up")
 		return
 	}
 
-	dbUser, _ := db.GetUserWithEmail(c, email)
+	dbUser, err := db.GetUserWithEmail(c, email)
+	if err != nil {
+		RedirectWithErrorMessage(res, req, "Load user error, please try again later", "/user/sign-up")
+		return
+	}
 
 	SetUserSession(res, req, dbUser)
 
@@ -169,26 +129,17 @@ func UserSignUpPost(c *components.Components, res http.ResponseWriter, req *http
 	} else {
 		res.Header().Set("Location", "/user/sign-up-complete")
 	}
-
 	res.WriteHeader(http.StatusFound)
 	return
 }
 
 func UserSignUpComplete(c *components.Components, res http.ResponseWriter, req *http.Request) {
 
-	var sessionModel = models.Session{}
-	errorSession, _ := gothic.Store.Get(req, "error-session")
-	if errorSession.Values["error"] != nil {
-		sessionModel.Error = fmt.Sprintf("%v", errorSession.Values["error"])
-		RemoveErrorSession(res,req)
-	}
+	sessionModel := LoadErrorSession(res, req)
 
 	userSession, _ := gothic.Store.Get(req, "user-session")
 	if userSession.Values["id"] == nil {
-		SetErrorSession(res, req, "Session expired")
-
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Session expired", "/")
 		return
 	}
 
@@ -202,10 +153,7 @@ func UserSignUpCompletePost(c *components.Components, res http.ResponseWriter, r
 
 	userSession, _ := gothic.Store.Get(req, "user-session")
 	if userSession.Values["id"] == nil {
-		SetErrorSession(res, req, "Session expired")
-
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Session expired", "/")
 		return
 	}
 
@@ -213,10 +161,7 @@ func UserSignUpCompletePost(c *components.Components, res http.ResponseWriter, r
 
 	dbUser, err := db.GetUser(c, id)
 	if err != nil {
-		SetErrorSession(res, req, "Unexpected error")
-
-		res.Header().Set("Location", "/user/sign-up-complete")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Unexpected error", "/user/sign-up-complete")
 		return
 	}
 
@@ -237,10 +182,7 @@ func UserSignUpCompletePost(c *components.Components, res http.ResponseWriter, r
 
 	err = db.UpdateUser(c, dbUser)
 	if err != nil {
-		SetErrorSession(res, req, "Update error, please try again later")
-
-		res.Header().Set("Location", "/user/sign-up-complete")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Update error, please try again later", "/user/sign-up-complete")
 		return
 	}
 
@@ -257,10 +199,7 @@ func UserProfile(c *components.Components, res http.ResponseWriter, req *http.Re
 
 	userSession, _ := gothic.Store.Get(req, "user-session")
 	if userSession.Values["id"] == nil {
-		SetErrorSession(res, req, "Session expired")
-
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Session expired", "/")
 		return
 	}
 
@@ -268,18 +207,12 @@ func UserProfile(c *components.Components, res http.ResponseWriter, req *http.Re
 
 	dbUser, err := db.GetUser(c, id)
 	if err != nil {
-		SetErrorSession(res, req, "Unexpected error")
-
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Unexpected error", "/")
 		return
 	}
 
 	if dbUser.Status != models.UserStatusComplete {
-		SetErrorSession(res, req, "Forbidden")
-
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Forbidden", "/")
 		return
 	}
 
@@ -295,19 +228,11 @@ func UserProfile(c *components.Components, res http.ResponseWriter, req *http.Re
 
 func UserProfileEdit(c *components.Components, res http.ResponseWriter, req *http.Request) {
 
-	var sessionModel  = models.Session{}
-	errorSession, _ := gothic.Store.Get(req, "error-session")
-	if errorSession.Values["error"] != nil {
-		sessionModel.Error = fmt.Sprintf("%v", errorSession.Values["error"])
-		RemoveErrorSession(res,req)
-	}
+	sessionModel := LoadErrorSession(res, req)
 
 	userSession, _ := gothic.Store.Get(req, "user-session")
 	if userSession.Values["id"] == nil {
-		SetErrorSession(res, req, "Session expired")
-
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Session expired", "/")
 		return
 	}
 
@@ -315,18 +240,12 @@ func UserProfileEdit(c *components.Components, res http.ResponseWriter, req *htt
 
 	dbUser, err := db.GetUser(c, id)
 	if err != nil {
-		SetErrorSession(res, req, "Unexpected error")
-
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Unexpected error", "/")
 		return
 	}
 
 	if dbUser.Status != models.UserStatusComplete {
-		SetErrorSession(res, req, "Forbidden")
-
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Forbidden", "/")
 		return
 	}
 
@@ -345,10 +264,7 @@ func UserProfileEditPost(c *components.Components, res http.ResponseWriter, req 
 
 	userSession, _ := gothic.Store.Get(req, "user-session")
 	if userSession.Values["id"] == nil {
-		SetErrorSession(res, req, "Session expired")
-
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Session expired", "/")
 		return
 	}
 
@@ -356,37 +272,25 @@ func UserProfileEditPost(c *components.Components, res http.ResponseWriter, req 
 
 	dbUser, err := db.GetUser(c, id)
 	if err != nil {
-		SetErrorSession(res, req, "Unexpected error")
-
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Unexpected error", "/")
 		return
 	}
 
 	if dbUser.Status != models.UserStatusComplete {
-		SetErrorSession(res, req, "Forbidden")
-
-		res.Header().Set("Location", "/")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Forbidden", "/")
 		return
 	}
 
 	email := strings.TrimSpace(req.Form.Get("email"))
 	if len(email) == 0 {
-		SetErrorSession(res, req, "Invalid email")
-
-		res.Header().Set("Location", "/user/profile-edit")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Invalid email", "/user/profile-edit")
 		return
 	}
 
 	if dbUser.Email != email {
 		_, err := db.GetUserWithEmail(c, email)
 		if err == nil {
-			SetErrorSession(res, req, "Email is already taken")
-
-			res.Header().Set("Location", "/user/profile-edit")
-			res.WriteHeader(http.StatusFound)
+			RedirectWithErrorMessage(res, req, "Email is already taken", "/user/profile-edit")
 			return
 		}
 	}
@@ -415,10 +319,7 @@ func UserProfileEditPost(c *components.Components, res http.ResponseWriter, req 
 
 	err = db.UpdateUser(c, dbUser)
 	if err != nil {
-		SetErrorSession(res, req, "Update error, please try again later")
-
-		res.Header().Set("Location", "/user/profile-edit")
-		res.WriteHeader(http.StatusFound)
+		RedirectWithErrorMessage(res, req, "Update error, please try again later", "/user/profile-edit")
 		return
 	}
 
