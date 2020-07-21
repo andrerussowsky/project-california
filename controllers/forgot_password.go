@@ -86,7 +86,7 @@ func UserForgotPasswordReset(c *components.Components, res http.ResponseWriter, 
 
 	fp, err := db.GetForgotPassword(c, keys[0])
 	if err != nil {
-		RedirectWithErrorMessage(res, req, "Unexpected error", "/")
+		RedirectWithErrorMessage(res, req, "Link expired", "/")
 		return
 	}
 
